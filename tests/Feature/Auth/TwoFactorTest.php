@@ -319,6 +319,86 @@ class TwoFactorTest extends TestCase
     /**
      * @return void
      */
+    public function testMethodsListsConfiguredAvailableAndUsersConfirmedMethods(): void
+    {
+        config([ 'two_factor.available_methods' => [ 'totp', 'email' ] ]);
+        $user = $this->_createUser();
+        $secret = (new Google2FA())->generateSecretKey();
+
+        TwoFactorMethod::create([
+            'user_id' => $user->id, 'method' => 'totp',
+            'secret' => $secret, 'confirmed_at' => now()
+        ]);
+        // Enrôlement démarré mais jamais confirmé : ne doit pas apparaître
+        // dans 'enabled'.
+        TwoFactorMethod::create([
+            'user_id' => $user->id, 'method' => 'email',
+            'secret' => null, 'confirmed_at' => null
+        ]);
+
+        $response = $this->actingAs($user, 'sanctum')
+            ->getJson('/api/auth/2fa/methods');
+
+        $response->assertStatus(200);
+        $this->assertSame([ 'totp', 'email' ], $response->json('data.available'));
+        $this->assertSame([ 'totp' ], $response->json('data.enabled'));
+    }
+
+    /**
+     * @return void
+     */
+    public function testMethodsRequiresFullAuthentication(): void
+    {
+        $this->_createUser();
+
+        $response = $this->getJson('/api/auth/2fa/methods');
+
+        $response->assertStatus(401);
+    }
+
+    /**
+     * A pending 'enroll' response lists the project's configured
+     * available methods, so the frontend knows what to offer - nothing
+     * is confirmed yet for this user to infer it from otherwise.
+     *
+     * @return void
+     */
+    public function testForcedEnrollmentListsConfiguredAvailableMethods(): void
+    {
+        config([
+            'two_factor.force_enrollment' => true,
+            'two_factor.available_methods' => [ 'totp' ],
+        ]);
+        $this->_createUser();
+
+        $response = $this->postJson('/api/auth/login', [
+            'login' => 'jdoe', 'password' => 'Passw0rd!'
+        ]);
+
+        $this->assertSame([ 'totp' ], $response->json('data.methods'));
+    }
+
+    /**
+     * A method left out of available_methods is rejected outright, even
+     * called directly - the config is an actual restriction, not just
+     * what the login response happens to advertise.
+     *
+     * @return void
+     */
+    public function testSetupRejectsAMethodNotInAvailableMethods(): void
+    {
+        config([ 'two_factor.available_methods' => [ 'email' ] ]);
+        $user = $this->_createUser();
+
+        $response = $this->actingAs($user, 'sanctum')
+            ->postJson('/api/auth/2fa/totp/setup');
+
+        $response->assertStatus(404);
+    }
+
+    /**
+     * @return void
+     */
     public function testEnablingEmailSendsACodeAndConfirmingActivatesIt(): void
     {
         Mail::fake();

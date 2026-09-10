@@ -62,6 +62,12 @@ class TwoFactorController extends BaseController
      */
     public function setup(Request $request): JsonResponse
     {
+        if (!$this->_methodAvailable('totp')) {
+            $this->setResponse(trans('rivet::two_factor.unknown_method'), 404);
+
+            return $this->response->format();
+        }
+
         $user = $this->_targetUser($request);
 
         if (is_null($user)) {
@@ -134,6 +140,12 @@ class TwoFactorController extends BaseController
      */
     public function enableEmail(Request $request): JsonResponse
     {
+        if (!$this->_methodAvailable('email')) {
+            $this->setResponse(trans('rivet::two_factor.unknown_method'), 404);
+
+            return $this->response->format();
+        }
+
         $user = $this->_targetUser($request);
 
         if (is_null($user)) {
@@ -269,6 +281,28 @@ class TwoFactorController extends BaseController
     }
 
     /**
+     * GET /auth/2fa/methods - what a "manage my 2FA" settings screen
+     * needs: which methods this project offers, and which of those this
+     * user has actually confirmed. Requires full normal authentication,
+     * same as disable() - a settings screen only makes sense for an
+     * already-logged-in user, never mid-login behind a pending token.
+     *
+     * @param Request $request The request
+     *
+     * @return JsonResponse
+     */
+    public function methods(Request $request): JsonResponse
+    {
+        $this->setResponse([
+            'available' => config('two_factor.available_methods'),
+            'enabled'   => $request->user()->twoFactorMethods()
+                ->whereNotNull('confirmed_at')->pluck('method')->all()
+        ]);
+
+        return $this->response->format();
+    }
+
+    /**
      * DELETE /auth/2fa/{method} - disable an enrolled method. Requires
      * full normal authentication ('lpfauth:sanctum') - never reachable
      * with a pending token, which would let a compromised pending
@@ -306,6 +340,22 @@ class TwoFactorController extends BaseController
         }
 
         return $request->user();
+    }
+
+    /**
+     * Whether a method is offered by this project - config-driven, not
+     * per-user. Checked at the entry point of each enrollment method
+     * (setup()/enableEmail()) so config('two_factor.available_methods')
+     * is an actual restriction, not just what TwoFactorLoginChallenger
+     * happens to advertise on an 'enroll' response.
+     *
+     * @param string $method The method name
+     *
+     * @return bool
+     */
+    private function _methodAvailable(string $method): bool
+    {
+        return in_array($method, config('two_factor.available_methods'), true);
     }
 
     /**

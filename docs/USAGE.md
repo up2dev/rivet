@@ -433,6 +433,7 @@ de connexion entièrement différent.
 |---|---|
 | `enabled` | Interrupteur général (défaut : `true`) |
 | `issuer` | Nom affiché dans l'appli d'authentification |
+| `available_methods` | Méthodes proposées par le projet (`totp`, `email`), séparées par une virgule (défaut : `totp,email`) — restreint à la fois ce que `setup()`/`enableEmail()` acceptent (une méthode absente de cette liste est rejetée avec un 404, même appelée directement) et ce que `TwoFactorLoginChallenger` annonce dans `methods` sur un `intent: "enroll"` |
 | `force_enrollment` | Si `true`, un utilisateur sans méthode confirmée est bloqué à la connexion derrière un enrôlement obligatoire plutôt que laissé passer sans protection |
 | `bypass_permission` | Uid de la permission d'exemption (défaut : `RIVET_BYPASS_2FA`) — contourne le 2FA entièrement, y compris l'enrôlement forcé |
 | `pending_token_ttl` | Durée de vie (minutes) du jeton intermédiaire |
@@ -479,8 +480,10 @@ actif) :
    `intent: "verify"` est renvoyé à la place du token, avec la liste des
    méthodes disponibles. Pas de token tant que le code n'est pas validé.
 3. **Rien de confirmé, `force_enrollment` actif** → un jeton intermédiaire
-   `intent: "enroll"` est renvoyé — l'utilisateur doit enrôler une méthode
-   avant d'obtenir un token.
+   `intent: "enroll"` est renvoyé, avec la liste `methods` tirée de
+   `config('two_factor.available_methods')` (rien n'est encore confirmé
+   pour cet utilisateur, donc pas d'autre source pour cette liste) —
+   l'utilisateur doit enrôler une méthode avant d'obtenir un token.
 4. **Rien de confirmé, `force_enrollment` inactif** (défaut) → connexion
    normale, comportement identique à un projet sans 2FA.
 
@@ -505,13 +508,18 @@ l'un ou l'autre automatiquement — aucune route à dupliquer.
 
 | Route | Rôle |
 |---|---|
-| `POST /auth/2fa/totp/setup` | Génère un secret + l'URI `otpauth://` (à afficher en QR côté client — Rivet ne génère jamais l'image lui-même) |
+| `POST /auth/2fa/totp/setup` | Génère un secret et une URI `otpauth://` (`{ secret, qr_uri }`), à afficher en QR côté client — Rivet ne génère jamais l'image lui-même |
 | `POST /auth/2fa/totp/confirm` | Confirme avec un code |
 | `POST /auth/2fa/email/enable` | Active la méthode email, envoie un premier code |
 | `POST /auth/2fa/email/confirm` | Confirme avec le code reçu |
 | `POST /auth/2fa/email/request-code` | (Re)envoie un code — utilisé pour vérifier une méthode email déjà confirmée à la connexion |
 | `POST /auth/2fa/verify` | Vérifie un code (`pending_token` + `method` + `code`) et émet le vrai token Sanctum |
+| `GET /auth/2fa/methods` | `{ available, enabled }` pour un écran "mes méthodes de connexion" — `available` vient de `config('two_factor.available_methods')`, `enabled` des méthodes confirmées de l'utilisateur courant. **Exige une authentification Sanctum complète**, comme `DELETE` ci-dessous |
 | `DELETE /auth/2fa/{method}` | Désactive une méthode — **exige une authentification Sanctum complète**, jamais accessible via un simple jeton intermédiaire |
+
+`totp/setup` et `email/enable` rejettent avec un `404` toute méthode
+absente de `config('two_factor.available_methods')`, même appelée
+directement (voir la configuration ci-dessus).
 
 Confirmer une méthode alors qu'on porte un jeton d'enrôlement forcé
 (`intent: "enroll"`) **complète directement la connexion** : le token
@@ -723,8 +731,9 @@ Laravel. Voir [`docs/INTEGRATION.md`](INTEGRATION.md) pour l'exemple complet.
 
 Voir la table dédiée dans la section "Authentification à deux facteurs"
 plus haut (`TWO_FACTOR_ENABLED`, `TWO_FACTOR_ISSUER`,
-`TWO_FACTOR_FORCE_ENROLLMENT`, `TWO_FACTOR_BYPASS_PERMISSION`,
-`TWO_FACTOR_PENDING_TOKEN_TTL`, `TWO_FACTOR_EMAIL_CODE_TTL`).
+`TWO_FACTOR_AVAILABLE_METHODS`, `TWO_FACTOR_FORCE_ENROLLMENT`,
+`TWO_FACTOR_BYPASS_PERMISSION`, `TWO_FACTOR_PENDING_TOKEN_TTL`,
+`TWO_FACTOR_EMAIL_CODE_TTL`).
 
 ### Mailing
 

@@ -1,5 +1,20 @@
 # Changelog
 
+## Unreleased
+
+### Added
+
+- **`config('two_factor.available_methods')`** (`TWO_FACTOR_AVAILABLE_METHODS`,
+  default `totp,email`) — which methods a project actually offers.
+  `TwoFactorLoginChallenger` now lists it in `methods` on a pending
+  `intent: "enroll"` response (previously always empty, since nothing
+  is confirmed yet for a brand-new user); `setup()`/`enableEmail()`
+  reject any method left out of it with a `404`, even called directly.
+- **`GET /auth/2fa/methods`** — `{ available, enabled }` for a "manage
+  my two-factor methods" settings screen. Requires full Sanctum
+  authentication, never a pending token (same as `DELETE
+  /auth/2fa/{method}`).
+
 ## v1.0.0
 
 Initial release.

@@ -68,7 +68,9 @@ class TwoFactorLoginChallenger implements LoginChallenger
         }
 
         if (config('two_factor.force_enrollment')) {
-            return $this->pendingResponse($user, 'enroll', []);
+            return $this->pendingResponse(
+                $user, 'enroll', config('two_factor.available_methods')
+            );
         }
 
         return null;
@@ -80,7 +82,10 @@ class TwoFactorLoginChallenger implements LoginChallenger
      *
      * @param User     $user    The user
      * @param string   $intent  'verify' or 'enroll'
-     * @param string[] $methods Confirmed method names, when intent is 'verify'
+     * @param string[] $methods The user's confirmed methods (intent
+     *                          'verify'), or the project's configured
+     *                          available methods to choose from (intent
+     *                          'enroll' - nothing is confirmed yet)
      *
      * @return JsonResponse
      */

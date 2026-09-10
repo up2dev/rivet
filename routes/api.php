@@ -78,6 +78,7 @@ Route::prefix('auth')->namespace('Auth')->middleware(
             'email/request-code', 'requestEmailCode'
         );
         Route::withoutMiddleware('lpfauth:sanctum')->post('verify', 'verify');
+        Route::get('methods', 'methods');
         Route::delete('{method}', 'disable');
     });
 

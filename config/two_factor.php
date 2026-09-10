@@ -25,6 +25,23 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Available methods
+    |--------------------------------------------------------------------------
+    |
+    | Which methods a project actually offers ('totp', 'email'). Drives two
+    | things: what TwoFactorLoginChallenger lists in a pending 'enroll'
+    | response (so the frontend knows what to propose during forced
+    | enrollment, since a brand-new user has nothing confirmed yet to infer
+    | it from), and which methods setup()/enableEmail() accept - a method
+    | left out here is rejected even if a client requests it directly.
+    |
+    */
+    'available_methods' => array_filter(explode(
+        ',', env('TWO_FACTOR_AVAILABLE_METHODS', 'totp,email')
+    )),
+
+    /*
+    |--------------------------------------------------------------------------
     | Force enrollment
     |--------------------------------------------------------------------------
     |
