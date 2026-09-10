@@ -89,6 +89,34 @@ class TwoFactorTest extends TestCase
     }
 
     /**
+     * setup()/confirm() etc. deliberately run without 'lpfauth:sanctum'
+     * (so the same routes also serve the pending-token/forced-enrollment
+     * case) - _targetUser() falls back to $request->user('sanctum') for
+     * the self-service branch. actingAs($user, 'sanctum') would NOT
+     * catch a regression here: it calls Auth::shouldUse('sanctum')
+     * internally, changing the default guard for the whole test, which
+     * masks exactly this bug. A real bearer token, issued by an actual
+     * login and sent as a header, is the only way to exercise the same
+     * resolution path a real frontend request goes through.
+     *
+     * @return void
+     */
+    public function testSelfServiceSetupAuthenticatesWithARealBearerToken(): void
+    {
+        $this->_createUser();
+
+        $token = $this->postJson('/api/auth/login', [
+            'login' => 'jdoe', 'password' => 'Passw0rd!'
+        ])->json('data.token');
+
+        $response = $this->withHeader('Authorization', "Bearer {$token}")
+            ->postJson('/api/auth/2fa/totp/setup');
+
+        $response->assertStatus(200);
+        $this->assertNotEmpty($response->json('data.secret'));
+    }
+
+    /**
      * @return void
      */
     public function testTotpConfirmRejectsAWrongCode(): void

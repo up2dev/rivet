@@ -340,7 +340,15 @@ class TwoFactorController extends BaseController
             return $request->attributes->get('two_factor_pending_user');
         }
 
-        return $request->user();
+        // These routes deliberately run without 'lpfauth:sanctum' (see the
+        // class docblock), so nothing else has resolved a guard for this
+        // request yet. $request->user() with no argument falls back to
+        // config('auth.defaults.guard') - 'web' in a stock Laravel config,
+        // never populated for a stateless API request - so the self-service
+        // (already logged in) branch silently got a 401 no matter how
+        // valid the Sanctum bearer token was. The guard must be named
+        // explicitly here.
+        return $request->user('sanctum');
     }
 
     /**
