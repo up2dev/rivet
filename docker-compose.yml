@@ -1,0 +1,9 @@
+services:
+  tests:
+    build: .
+    # Bind-mount only the results folder back to the host - everything
+    # else runs from what was COPY'd into the image at build time, so
+    # `docker compose build` after a code change picks it up cleanly.
+    volumes:
+      - ./test-results:/app/test-results
+    command: sh scripts/run-tests.sh

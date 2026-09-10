@@ -1,0 +1,32 @@
+# Dependencies (a library's own lock file isn't committed - consumers
+# resolve their own versions; /vendor is always build output)
+/vendor
+composer.lock
+composer.phar
+
+# Test output
+/test-results
+.phpunit.cache
+.phpunit.result.cache
+/build
+
+# Local environment
+.env
+.env.*
+!.env.example
+
+# IDE / editor
+.idea
+.vscode
+*.sublime-project
+*.sublime-workspace
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Docker local overrides
+docker-compose.override.yml

@@ -1,0 +1,32 @@
+<?php
+
+return [
+    '200' => 'OK',
+    '201' => 'Created',
+    '202' => 'Accepted - no success guarantee',
+    '203' => 'Non-Authoritative Information - non-certified source',
+    '204' => 'No Content',
+    '205' => 'Reset Content',
+    '206' => 'Partial Content',
+    '400' => 'Bad Request',
+    '401' => 'Unauthorized - need authentication',
+    '402' => 'Payment Required',
+    '403' => 'Forbidden - not the appropriate rights',
+    '404' => 'Not Found',
+    '405' => 'Method Not Allowed',
+    '406' => 'Not Acceptable - not in "Accept" Header',
+    '407' => 'Proxy Authentication Required',
+    '408' => 'Request Time-out',
+    '409' => 'Conflict',
+    '410' => 'Gone',
+    '411' => 'Length Required',
+    '412' => 'Precondition Failed',
+    '413' => 'Request Entity Too Large',
+    '414' => 'Request-URI Too Long',
+    '415' => 'Unsupported Media Type',
+    '416' => 'Requested range unsatisfiable - wrong "Range" Header',
+    '417' => 'Expectation failed - couldn\'t meet the "Expect" requirements',
+    '421' => 'Bad mapping / Misdirected Request - no answer from the service',
+    '500' => 'Internal Server Error',
+    '501' => 'Not Implemented - Function doesn\'t exists'
+];
