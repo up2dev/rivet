@@ -1,5 +1,19 @@
 # Changelog
 
+## v1.1.2
+
+### Fixed
+
+- Self-service 2FA routes (`totp/setup`, `totp/confirm`, `email/enable`,
+  `email/confirm`, `email/request-code`) rejected a valid Sanctum bearer
+  token with a `401`. These routes deliberately skip `lpfauth:sanctum`
+  middleware so the same routes also serve the pending-token/forced-
+  enrollment case — but that middleware is also what makes
+  `$request->user()` resolve against the `sanctum` guard rather than
+  the app's default guard (`web`, never populated for a stateless API
+  request). `_targetUser()` now resolves `$request->user('sanctum')`
+  explicitly.
+
 ## v1.1.1
 
 ### Fixed
