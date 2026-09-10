@@ -18,6 +18,7 @@ use Rivet\Data\Models\Auth\TwoFactorMethod;
 use Rivet\Data\Models\Auth\Role;
 use Rivet\Data\Models\Auth\Permission;
 use Rivet\Data\Models\Dictionaries\Types\PermissionType;
+use Rivet\Tests\Support\HostUser;
 
 /**
  * Covers Rivet's native two-factor authentication end to end: the
@@ -200,6 +201,84 @@ class TwoFactorTest extends TestCase
         ]);
 
         $response->assertStatus(401);
+    }
+
+    /**
+     * verify() must honour ?with=, the same way AuthController::login()
+     * does for a direct (no 2FA) login - issueToken()'s own docblock
+     * promises "the same token shape", which a silently-missing relation
+     * would break.
+     *
+     * @return void
+     */
+    public function testVerifyEagerLoadsRequestedRelations(): void
+    {
+        $user = $this->_createUser();
+        $secret = (new Google2FA())->generateSecretKey();
+
+        TwoFactorMethod::create([
+            'user_id' => $user->id, 'method' => 'totp',
+            'secret' => $secret, 'confirmed_at' => now()
+        ]);
+
+        $role = Role::create([ 'uid' => 'MEMBER', 'name' => 'Member' ]);
+        $user->roles()->attach($role->id);
+
+        $pending = $this->postJson('/api/auth/login', [
+            'login' => 'jdoe', 'password' => 'Passw0rd!'
+        ])->json('data');
+
+        $code = (new Google2FA())->getCurrentOtp($secret);
+
+        $response = $this->postJson('/api/auth/2fa/verify?with=roles', [
+            'pending_token' => $pending['pending_token'],
+            'method'        => 'totp',
+            'code'          => $code
+        ]);
+
+        $response->assertStatus(200);
+        $this->assertArrayHasKey('roles', $response->json('data.user'));
+        $this->assertSame('MEMBER', $response->json('data.user.roles.0.uid'));
+    }
+
+    /**
+     * verify() and the pending-token middleware must resolve the user
+     * through config('crud.user_model') - a host application's own User
+     * subclass (default eager-loaded relations, accessors, etc.) - not
+     * Rivet's own base class hardcoded, which would silently discard
+     * every one of those customizations on this path only. HostUser's
+     * appended 'is_host_user' attribute is the concrete, JSON-observable
+     * proof: it's only present when this exact subclass was the one
+     * actually instantiated.
+     *
+     * @return void
+     */
+    public function testVerifyResolvesTheConfiguredUserModel(): void
+    {
+        config([ 'crud.user_model' => HostUser::class ]);
+
+        $user = $this->_createUser();
+        $secret = (new Google2FA())->generateSecretKey();
+
+        TwoFactorMethod::create([
+            'user_id' => $user->id, 'method' => 'totp',
+            'secret' => $secret, 'confirmed_at' => now()
+        ]);
+
+        $pending = $this->postJson('/api/auth/login', [
+            'login' => 'jdoe', 'password' => 'Passw0rd!'
+        ])->json('data');
+
+        $code = (new Google2FA())->getCurrentOtp($secret);
+
+        $response = $this->postJson('/api/auth/2fa/verify', [
+            'pending_token' => $pending['pending_token'],
+            'method'        => 'totp',
+            'code'          => $code
+        ]);
+
+        $response->assertStatus(200);
+        $this->assertTrue($response->json('data.user.is_host_user'));
     }
 
     /**

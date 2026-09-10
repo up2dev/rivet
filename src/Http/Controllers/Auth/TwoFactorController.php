@@ -249,7 +249,8 @@ class TwoFactorController extends BaseController
             return $this->_unauthorized();
         }
 
-        $user = User::find($payload['user_id']);
+        $user_model = config('crud.user_model');
+        $user = $user_model::find($payload['user_id']);
         $method = (string) $request->input('method');
         $code = (string) $request->input('code');
 

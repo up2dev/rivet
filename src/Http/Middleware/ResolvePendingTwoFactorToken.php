@@ -12,7 +12,6 @@ namespace Rivet\Http\Middleware;
 
 use Closure;
 use Illuminate\Http\Request;
-use Rivet\Data\Models\Auth\User;
 use Rivet\Services\TwoFactorService;
 
 /**
@@ -62,7 +61,8 @@ class ResolvePendingTwoFactorToken
             $payload = $this->service->resolvePendingToken($token);
 
             if (!is_null($payload)) {
-                $user = User::find($payload['user_id']);
+                $user_model = config('crud.user_model');
+                $user = $user_model::find($payload['user_id']);
 
                 if (!is_null($user)) {
                     $request->attributes->set('two_factor_pending_user', $user);

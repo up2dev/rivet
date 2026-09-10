@@ -1,6 +1,22 @@
 # Changelog
 
-## Unreleased
+## v1.1.1
+
+### Fixed
+
+- `verify()` and `ResolvePendingTwoFactorToken` now resolve the user
+  through `config('crud.user_model')` instead of hardcoding Rivet's own
+  base `User` class. A host application's own `User` subclass (default
+  eager-loaded relations, accessors, etc.) was silently dropped on this
+  path only — including the forced-enrollment completion path, which
+  shares the same code.
+- `TwoFactorService::issueToken()` now eager-loads
+  `config('query.relations')` before issuing the token, so `?with=` is
+  honored the same way a direct login already honors it. Concretely: a
+  client requesting `?with=roles.permissions` on `POST /auth/2fa/verify`
+  got back a `user` object with no `roles` key at all.
+
+## v1.1.0
 
 ### Added
 

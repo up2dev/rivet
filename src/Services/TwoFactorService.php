@@ -206,6 +206,15 @@ class TwoFactorService
      */
     public function issueToken(User $user, Request $request): array
     {
+        // AuthController::login() applies ?with= relations to the user it
+        // fetches; every path that reaches here does so via a bare find()
+        // with no such eager-loading, so it's done once, centrally, here -
+        // otherwise this token shape quietly diverges from a direct login's
+        // despite the promise below.
+        foreach (config('query.relations', []) as $relation) {
+            $user->load($relation);
+        }
+
         $token = $user->createToken(
             Hash::make($request->server('HTTP_USER_AGENT')), [ '*' ],
             (
