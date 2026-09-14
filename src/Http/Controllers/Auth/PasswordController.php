@@ -19,6 +19,7 @@ use Illuminate\Support\Str;
 use Rivet\Data\Models\Token;
 use Rivet\Http\Controllers\BaseController;
 use Rivet\Mail\BaseMail;
+use Rivet\Support\FrontendUrl;
 
 /**
  * PasswordController
@@ -60,10 +61,14 @@ class PasswordController extends BaseController
                 'expires_at' => $creation_date->modify("+{$duration_min} minutes")
             ]);
 
+            // Même route front que la création de mot de passe (même
+            // process, voir docs internes) — même helper, résolu ici
+            // de façon synchrone pour la même raison que dans UserTrait.
             Mail::send(new BaseMail('rivet::emails.auth.forgot', [
                 'user'             => $user,
                 'token'            => $token_string,
                 'token_expires_at' => $creation_date,
+                'url'              => FrontendUrl::build('password', $token_string),
                 'subject'          => trans('rivet::mail.subject_auth_forgot')
             ]));
 

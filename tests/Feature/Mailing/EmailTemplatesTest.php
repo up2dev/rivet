@@ -49,10 +49,11 @@ class EmailTemplatesTest extends TestCase
     {
         $html = view('rivet::emails.auth.forgot', [
             'user' => $this->_user(), 'token' => 'tok123',
-            'token_expires_at' => now()->addHour()
+            'token_expires_at' => now()->addHour(),
+            'url' => 'https://example.com/test-url'
         ])->render();
 
-        $this->assertStringContainsString('reset-password/tok123', $html);
+        $this->assertStringContainsString('https://example.com/test-url', $html);
     }
 
     /**
@@ -62,10 +63,11 @@ class EmailTemplatesTest extends TestCase
     {
         $html = view('rivet::emails.auth.password', [
             'user' => $this->_user(), 'token' => 'tok456',
-            'token_expires_at' => now()->addHour()
+            'token_expires_at' => now()->addHour(),
+            'url' => 'https://example.com/test-url'
         ])->render();
 
-        $this->assertStringContainsString('create-password/tok456', $html);
+        $this->assertStringContainsString('https://example.com/test-url', $html);
     }
 
     /**

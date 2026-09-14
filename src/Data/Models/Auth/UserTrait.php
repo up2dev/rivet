@@ -17,6 +17,7 @@ use Illuminate\Support\Facades\Request;
 use Rivet\Data\Models\Mailing\Sendmail;
 use Rivet\Data\Models\Token;
 use Rivet\Mail\BaseMail;
+use Rivet\Support\FrontendUrl;
 
 /**
  * UserTrait
@@ -93,20 +94,9 @@ trait UserTrait
             if (
                 config('mail.is_forcing_password_creation') &&
                 !is_null($model->email) &&
-                // is_null($model->getOriginal('password')) &&
                 is_null($model->password) &&
                 is_null($model->deleted_at) &&
                 $model->is_active
-                // $model->pwdTokens()->where(
-                //     'purpose', 'pwd_email'
-                // )->where(
-                //     'expires_at', '>', (new DateTime())->format('Y-m-d H:i:s')
-                // )->count() === 0 &&
-                // $model->pwdTokens()->where(
-                //     'purpose', 'pwd_create'
-                // )->where(
-                //     'expires_at', '>', (new DateTime())->format('Y-m-d H:i:s')
-                // )->count() === 0
             ) {
                 $token_string = Token::generateTokenString();
                 $duration_min = config('auth.pwd_token_validity');
@@ -119,10 +109,16 @@ trait UserTrait
                     'expires_at' => $creation_date->modify("+{$duration_min} minutes")
                 ]);
 
+                // Résolu ICI, de façon synchrone, pendant que la requête
+                // HTTP d'origine (et son en-tête Accept-Language) existe
+                // encore — jamais dans le template Blade, qui peut être
+                // rendu plus tard par un job de queue sans contexte de
+                // requête (voir FrontendUrl::build()).
                 Mail::send(new BaseMail('rivet::emails.auth.password', [
                     'user'             => $model,
                     'token'            => $token_string,
                     'token_expires_at' => $creation_date,
+                    'url'              => FrontendUrl::build('password', $token_string),
                     'subject'          => trans('rivet::mail.subject_auth_password')
                 ]));
             }
