@@ -22,7 +22,7 @@ use Rivet\Services\TwoFactorService;
 /**
  * Enrollment and verification for Rivet's native two-factor
  * authentication. Reachable two ways depending on the action: a
- * normally-authenticated user managing their own settings ('lpfauth:
+ * normally-authenticated user managing their own settings ('rivet.auth:
  * sanctum'), or a user mid-login carrying a pending token issued by
  * TwoFactorLoginChallenger (see ResolvePendingTwoFactorToken) - see
  * _targetUser() for how the two are reconciled.
@@ -297,7 +297,7 @@ class TwoFactorController extends BaseController
 
     /**
      * DELETE /auth/2fa/{method} - disable an enrolled method. Requires
-     * full normal authentication ('lpfauth:sanctum') - never reachable
+     * full normal authentication ('rivet.auth:sanctum') - never reachable
      * with a pending token, which would let a compromised pending
      * token disable a user's real protection.
      *
@@ -338,7 +338,7 @@ class TwoFactorController extends BaseController
             return $request->attributes->get('two_factor_pending_user');
         }
 
-        // These routes deliberately run without 'lpfauth:sanctum' (see the
+        // These routes deliberately run without 'rivet.auth:sanctum' (see the
         // class docblock), so nothing else has resolved a guard for this
         // request yet. $request->user() with no argument falls back to
         // config('auth.defaults.guard') - 'web' in a stock Laravel config,

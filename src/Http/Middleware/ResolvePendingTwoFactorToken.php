@@ -21,7 +21,7 @@ use Rivet\Services\TwoFactorService;
  * gate: a request with no pending_token (or an invalid/expired one)
  * passes through unchanged, so the same routes stay reachable by a
  * normally-authenticated user doing self-service enrollment (who
- * authenticates via 'lpfauth:sanctum' instead, resolved separately by
+ * authenticates via 'rivet.auth:sanctum' instead, resolved separately by
  * TwoFactorController::_targetUser()).
  *
  * @category Middleware

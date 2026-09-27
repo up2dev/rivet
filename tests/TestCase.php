@@ -100,7 +100,7 @@ abstract class TestCase extends BaseTestCase
     }
 
     /**
-     * Foundation's own migrations minus the 'logs' table, which lives
+     * Rivet's own migrations minus the 'logs' table, which lives
      * on a dedicated MongoDB connection this test environment doesn't
      * configure.
      *

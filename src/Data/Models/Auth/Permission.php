@@ -141,7 +141,7 @@ class Permission extends BaseModel
         foreach (Route::getRoutes() as $route) {
             if (
                 isset($route->action['middleware']) &&
-                in_array('lpfauth:sanctum', $route->action['middleware'])
+                in_array('rivet.auth:sanctum', $route->action['middleware'])
             ) {
                 $uid = ra_to_uid($route);
 

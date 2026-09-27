@@ -28,7 +28,7 @@ vendor/bin/phpunit --filter testGreaterThanOperator
 ## Test environment
 
 `tests/TestCase.php` boots a real Laravel application via Orchestra
-Testbench, with Foundation's own service providers registered, against
+Testbench, with Rivet's own service providers registered, against
 an in-memory SQLite database. Tests exercise actual routes, middleware,
 and migrations shipped by the package rather than a hand-rolled fake.
 

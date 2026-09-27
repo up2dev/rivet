@@ -97,7 +97,7 @@ class TwoFactorTest extends TestCase
     }
 
     /**
-     * setup()/confirm() etc. deliberately run without 'lpfauth:sanctum'
+     * setup()/confirm() etc. deliberately run without 'rivet.auth:sanctum'
      * (so the same routes also serve the pending-token/forced-enrollment
      * case) - _targetUser() falls back to $request->user('sanctum') for
      * the self-service branch. actingAs($user, 'sanctum') would NOT

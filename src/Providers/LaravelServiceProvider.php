@@ -141,7 +141,7 @@ class LaravelServiceProvider extends ServiceProvider
         // );
         Route::pushMiddlewareToGroup('api', QueryStringToConfig::class);
         Route::aliasMiddleware('dataValidation', DataValidate::class);
-        Route::aliasMiddleware('lpfauth', Authenticate::class);
+        Route::aliasMiddleware('rivet.auth', Authenticate::class);
         Route::aliasMiddleware('resolvePendingTwoFactor', ResolvePendingTwoFactorToken::class);
 
         Route::middleware('api')->namespace(

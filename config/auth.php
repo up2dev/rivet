@@ -41,7 +41,7 @@ return [
             'provider' => 'users'
         ],
 
-        // The package hardcodes 'lpfauth:sanctum' throughout its own
+        // The package hardcodes 'rivet.auth:sanctum' throughout its own
         // routes/api.php (guard name is not configurable there) -
         // every protected route depends on this guard existing.
         // Sanctum's own install docs ask consuming apps to add this

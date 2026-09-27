@@ -132,7 +132,7 @@ un extrait de route en fin d'exécution ; coller ceci dans
 use App\Http\Controllers\ArticleController;
 
 Route::prefix('articles')->controller(ArticleController::class)
-    ->middleware([ 'lpfauth:sanctum', 'dataValidation:Article' ])->group(function () {
+    ->middleware([ 'rivet.auth:sanctum', 'dataValidation:Article' ])->group(function () {
         Route::get('/', 'list');
         Route::get('{uid}', 'show')->where([ 'uid' => '[0-9]+' ]);
         Route::post('/', 'add');

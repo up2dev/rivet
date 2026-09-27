@@ -28,7 +28,7 @@ use Illuminate\Support\Facades\Route;;
 // });
 
 Route::prefix('auth')->namespace('Auth')->middleware(
-    'lpfauth:sanctum'
+    'rivet.auth:sanctum'
 )->group(function () {
     Route::prefix('/')->controller('UserController')->middleware(
         'dataValidation:auth.user,rivet'
@@ -40,29 +40,29 @@ Route::prefix('auth')->namespace('Auth')->middleware(
     Route::controller('AuthController')->middleware(
         'dataValidation:auth.auth,rivet'
     )->group(function () {
-        Route::withoutMiddleware('lpfauth:sanctum')->post('login', 'login');
+        Route::withoutMiddleware('rivet.auth:sanctum')->post('login', 'login');
         Route::get('refresh', 'refresh');
         Route::get('logout', 'logout');
     });
 
     Route::prefix('user/email')->controller('UserController')->group(function () {
-        Route::withoutMiddleware('lpfauth:sanctum')->get('{token}', 'validate');
+        Route::withoutMiddleware('rivet.auth:sanctum')->get('{token}', 'validate');
     });
 
     Route::prefix('user/login')->controller('LoginController')->middleware(
         'dataValidation:auth.login,rivet'
     )->group(function () {
-        Route::withoutMiddleware('lpfauth:sanctum')->post('/', 'forgot');
+        Route::withoutMiddleware('rivet.auth:sanctum')->post('/', 'forgot');
     });
 
     Route::prefix('pwd')->controller('PasswordController')->group(function () {
-        Route::withoutMiddleware('lpfauth:sanctum')->middleware(
+        Route::withoutMiddleware('rivet.auth:sanctum')->middleware(
             'dataValidation:auth.passwordForgot,rivet'
         )->post('forgot', 'forgot');
         Route::middleware(
             'dataValidation:auth.passwordRenew,rivet'
         )->post('renew', 'renew');
-        Route::withoutMiddleware('lpfauth:sanctum')->middleware(
+        Route::withoutMiddleware('rivet.auth:sanctum')->middleware(
             'dataValidation:auth.passwordForgotRenew,rivet'
         )->post('{token}', 'mailRenew');
     });
@@ -70,14 +70,14 @@ Route::prefix('auth')->namespace('Auth')->middleware(
     Route::prefix('2fa')->controller('TwoFactorController')->middleware(
         'resolvePendingTwoFactor'
     )->group(function () {
-        Route::withoutMiddleware('lpfauth:sanctum')->post('totp/setup', 'setup');
-        Route::withoutMiddleware('lpfauth:sanctum')->post('totp/confirm', 'confirmTotp');
-        Route::withoutMiddleware('lpfauth:sanctum')->post('email/enable', 'enableEmail');
-        Route::withoutMiddleware('lpfauth:sanctum')->post('email/confirm', 'confirmEmail');
-        Route::withoutMiddleware('lpfauth:sanctum')->post(
+        Route::withoutMiddleware('rivet.auth:sanctum')->post('totp/setup', 'setup');
+        Route::withoutMiddleware('rivet.auth:sanctum')->post('totp/confirm', 'confirmTotp');
+        Route::withoutMiddleware('rivet.auth:sanctum')->post('email/enable', 'enableEmail');
+        Route::withoutMiddleware('rivet.auth:sanctum')->post('email/confirm', 'confirmEmail');
+        Route::withoutMiddleware('rivet.auth:sanctum')->post(
             'email/request-code', 'requestEmailCode'
         );
-        Route::withoutMiddleware('lpfauth:sanctum')->post('verify', 'verify');
+        Route::withoutMiddleware('rivet.auth:sanctum')->post('verify', 'verify');
         Route::get('methods', 'methods');
         Route::delete('{method}', 'disable');
     });
@@ -89,7 +89,7 @@ Route::prefix('auth')->namespace('Auth')->middleware(
     // //
     // Route::prefix('role')->controller('RoleController')->middleware(
     //     'dataValidation:auth.role,rivet'
-    // )->withoutMiddleware('lpfauth:sanctum')->group(function () {
+    // )->withoutMiddleware('rivet.auth:sanctum')->group(function () {
     //     Route::get('/', 'list');
     //     Route::get('{uid}', 'show')->where([ 'uid' => '[0-9]+' ]);
     //     Route::post('/', 'add');
@@ -104,7 +104,7 @@ Route::prefix('auth')->namespace('Auth')->middleware(
     // //
     // Route::prefix('permission')->controller('PermissionController')->middleware(
     //     'dataValidation:auth.permission,rivet'
-    // )->withoutMiddleware('lpfauth:sanctum')->group(function () {
+    // )->withoutMiddleware('rivet.auth:sanctum')->group(function () {
     //     Route::get('/', 'list');
     //     Route::get('{uid}', 'show')->where([ 'uid' => '[0-9]+' ]);
     //     Route::post('/', 'add');
@@ -114,7 +114,7 @@ Route::prefix('auth')->namespace('Auth')->middleware(
 });
 
 Route::prefix('log')->namespace('Log')->middleware(
-    'lpfauth:sanctum'
+    'rivet.auth:sanctum'
 )->group(function () {
     Route::controller('LogController')->middleware(
         'dataValidation:log.log,rivet'
@@ -144,7 +144,7 @@ Route::prefix('log')->namespace('Log')->middleware(
 // //
 // Route::prefix('user')->controller('Auth\UserController')->middleware(
 //     'dataValidation:auth.user,rivet'
-// )->withoutMiddleware('lpfauth:sanctum')->group(function () {
+// )->withoutMiddleware('rivet.auth:sanctum')->group(function () {
 //     Route::get('/', 'list');
 //     Route::get('{uid}', 'show')->where([ 'uid' => '[0-9]+' ]);
 //     Route::post('/', 'add');
@@ -158,7 +158,7 @@ Route::prefix('log')->namespace('Log')->middleware(
 // //
 // //
 // Route::prefix('taxonomy')->namespace('Dictionaries')->withoutMiddleware(
-//     'lpfauth:sanctum'
+//     'rivet.auth:sanctum'
 // )->group(function () {
 //     Route::controller('TaxonomyController')->middleware(
 //         'dataValidation:dictionaries.taxonomy,rivet'
@@ -228,7 +228,7 @@ Route::prefix('log')->namespace('Log')->middleware(
 //
 // Route::prefix('cront_task')->controller('CRONTaskController')->middleware(
 //     'dataValidation:CRONTask,rivet'
-// )->withoutMiddleware('lpfauth:sanctum')->group(function () {
+// )->withoutMiddleware('rivet.auth:sanctum')->group(function () {
 //     Route::get('/', 'list');
 //     Route::get('{uid}', 'show')->where([ 'uid' => '[0-9]+' ]);
 //     Route::post('/', 'add');

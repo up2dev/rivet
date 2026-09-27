@@ -49,13 +49,7 @@ class DefaultRole extends Command
     public function handle(): int
     {
         $repo = new RoleRepository();
-        $permissions = [
-            'LPFAR_AUTHROLE',
-            'LPFAR_AUTHROLE_ADD',
-            'LPFAR_AUTHROLE_EDIT',
-            'LPFAR_AUTHROLE_DELETE',
-            'LPFAP_AUTHPERMISSION'
-        ];
+        $permissions = Role::DEFAULT_PERMISSIONS;
         $role_uid = $this->option('roleuid');
         $role_name = $this->option('rolename');
         $email = $this->option('email');

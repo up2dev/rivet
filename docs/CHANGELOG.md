@@ -1,5 +1,26 @@
 # Changelog
 
+## v2.0.0
+
+### Breaking
+
+- The authentication middleware alias is now `rivet.auth` (was
+  `lpfauth`). In the host application, replace every
+  `lpfauth:sanctum` with `rivet.auth:sanctum` (routes, `withoutMiddleware()`
+  calls):
+
+  ```bash
+  grep -rl "lpfauth" routes app | xargs sed -i "s/lpfauth/rivet.auth/g"
+  ```
+
+  Permission uids are unchanged: no data migration.
+
+### Fixed
+
+- `--withdefaultpermissions` (`rightsmanagement`, `defaultrole:create`)
+  referenced uids that can never exist in Rivet. Now shared as
+  `Role::DEFAULT_PERMISSIONS`, following Rivet's own uid scheme.
+
 ## v1.3.1
 
 ### Documentation
@@ -11,15 +32,14 @@
 
 ## v1.3.0
 
-Password tokens and two-factor hardening, keeping the best of
-LumePack Foundation 2.3 (whose `tokens` table Rivet already ships).
-No new table: two upgrade migrations only.
+Password tokens and two-factor hardening. No new table: two upgrade
+migrations only.
 
 ### Upgrade notes
 
 - Run `php artisan migrate`. Two migrations are added:
   `drop_legacy_pwd_token_columns_from_users` (drops `users.pwd_token*`
-  when still present, e.g. a database coming from LumePack <= 2.2) and
+  when still present, e.g. an older database) and
   `encrypt_two_factor_secrets` (widens `user_two_factor_methods.secret`
   to `text` and encrypts existing TOTP secrets with `APP_KEY`).
   On Laravel 10, the column change requires `doctrine/dbal`.
@@ -99,7 +119,7 @@ No new table: two upgrade migrations only.
 
 - Self-service 2FA routes (`totp/setup`, `totp/confirm`, `email/enable`,
   `email/confirm`, `email/request-code`) rejected a valid Sanctum bearer
-  token with a `401`. These routes deliberately skip `lpfauth:sanctum`
+  token with a `401`. These routes deliberately skip the authentication
   middleware so the same routes also serve the pending-token/forced-
   enrollment case — but that middleware is also what makes
   `$request->user()` resolve against the `sanctum` guard rather than

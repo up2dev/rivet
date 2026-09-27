@@ -153,7 +153,7 @@ class AuthUpgradeTest extends TestCase
     }
 
     /**
-     * Databases coming from LumePack <= 2.2 still have them: dropped.
+     * Older databases still have them: dropped.
      *
      * @return void
      */

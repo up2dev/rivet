@@ -26,6 +26,18 @@ use Rivet\Database\Factories\Auth\RoleFactory;
  */
 class Role extends BaseModel
 {
+    /**
+     * Permissions granted by `--withdefaultpermissions` (role and
+     * permission management endpoints).
+     */
+    public const DEFAULT_PERMISSIONS = [
+        'RAAR_AUTHROLE',
+        'RAAR_AUTHROLE_ADD',
+        'RAAR_AUTHROLE_EDIT',
+        'RAAR_AUTHROLE_DELETE',
+        'RAAP_AUTHPERMISSION'
+    ];
+
     use HasFactory, SoftDeletes;
 
     /**

@@ -67,7 +67,7 @@ la déclaration des relations NN/ON/NO utilisées lors de l'enregistrement.
 Route (routes/api.php)
    │
    ▼
-Middleware 'lpfauth:sanctum'      →  authentifie via Sanctum
+Middleware 'rivet.auth:sanctum'      →  authentifie via Sanctum
    │
    ▼
 Middleware 'dataValidation:X'     →  valide le corps de la requête
@@ -387,7 +387,7 @@ class ArticleController extends BaseController
 
 ### Authentification (Laravel Sanctum)
 
-Le middleware `lpfauth:sanctum` (alias de `Authenticate`) protège une
+Le middleware `rivet.auth:sanctum` (alias de `Authenticate`) protège une
 route par token Sanctum. Endpoints fournis par `AuthController` :
 
 | Route | Rôle |
@@ -740,7 +740,7 @@ méthode HTTP mutante (`POST`/`PUT`/`PATCH`), jamais pour `GET`/`DELETE`.
 
 | Alias | Classe | Rôle |
 |---|---|---|
-| `lpfauth:{guard}` | `Authenticate` | Authentifie via le guard donné (typiquement `sanctum`), vérifie les permissions par route |
+| `rivet.auth:{guard}` | `Authenticate` | Authentifie via le guard donné (typiquement `sanctum`), vérifie les permissions par route |
 | `dataValidation:{Validator},{namespace}` | `DataValidate` | Valide le corps de la requête via `{namespace}\Data\Validators\{Validator}Validator` (`namespace` par défaut : `app`) |
 | (global, sans alias) | `QueryStringToConfig` | Parse `?filters=`/`?sort=`/`?with=`/`?page=`/`?limit=`/`?distinct=` en `QueryContext` |
 

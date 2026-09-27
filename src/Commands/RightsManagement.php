@@ -98,13 +98,7 @@ class RightsManagement extends Command
 
         if($withdefaultpermissions == "true"){
 
-            $permissions = [
-                'LPFAR_AUTHROLE',
-                'LPFAR_AUTHROLE_ADD',
-                'LPFAR_AUTHROLE_EDIT',
-                'LPFAR_AUTHROLE_DELETE',
-                'LPFAP_AUTHPERMISSION'
-            ];
+            $permissions = Role::DEFAULT_PERMISSIONS;
 
             $repo->update([
                 'permissions' => Permission::whereIn(
