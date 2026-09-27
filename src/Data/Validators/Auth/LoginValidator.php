@@ -27,6 +27,6 @@ class LoginValidator extends Validator
      * @var array
      */
     protected $rules = [
-        'email' => [ 'required', 'email', 'exists:users,email' ]
+        'email' => [ 'required', 'email' ]
     ];
 }

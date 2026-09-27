@@ -19,6 +19,7 @@ use Illuminate\Support\Str;
 use Laravel\Sanctum\NewAccessToken;
 use Rivet\Contracts\Auth\LoginChallenger;
 use Rivet\Data\Models\Auth\User;
+use Rivet\Services\AccessTokenService;
 
 /**
  * AuthController
@@ -80,34 +81,7 @@ class AuthController extends BaseController
                 }
             }
 
-            foreach ($user->tokens()->getResults() as $access_token) {
-                if (
-                    Hash::check(
-                        $request->server('HTTP_USER_AGENT'),
-                        $access_token->name
-                    ) || (
-                        !is_null($access_token->expires_at) &&
-                        new \DateTime($access_token->expires_at) < new \DateTime()
-                    )
-                ) {
-                    $access_token->delete();
-                }
-            }
-
-            $this->setResponse(
-                $this->setTokenBody($user->createToken(
-                    Hash::make($request->server('HTTP_USER_AGENT')), [ '*' ],
-                    (
-                        is_null(config('sanctum.expiration_override'))?
-                            (
-                                is_null(config('sanctum.expiration'))?
-                                    null:
-                                    now()->addMinutes(config('sanctum.expiration'))
-                            ):
-                            now()->addMinutes(config('sanctum.expiration_override'))
-                    )
-                ), $user)
-            );
+            $this->setResponse(app(AccessTokenService::class)->issue($user, $request));
         }
 
         return $this->response->format();
@@ -122,16 +96,13 @@ class AuthController extends BaseController
      */
     public function refresh(Request $request): JsonResponse
     {
-        $request->user()->currentAccessToken()->delete();
+        $user = $request->user();
+
+        $user->currentAccessToken()->delete();
+
+        // Same expiration rules as login (expiration_override included).
         $this->setResponse(
-            $this->setTokenBody($request->user()->createToken(
-                Hash::make($request->server('HTTP_USER_AGENT')), [ '*' ],
-                (
-                    is_null(config('sanctum.expiration'))?
-                        null:
-                        now()->addMinutes(config('sanctum.expiration'))
-                )
-            ))
+            app(AccessTokenService::class)->issue($user, $request, false)
         );
 
         return $this->response->format();
@@ -154,6 +125,8 @@ class AuthController extends BaseController
 
     /**
      * Helper function to format the response with the token.
+     *
+     * @deprecated 1.3.0 Use AccessTokenService::issue() instead.
      *
      * @param NewAccessToken $token The token
      *

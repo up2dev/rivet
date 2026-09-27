@@ -10,12 +10,12 @@
  */
 namespace Rivet\Http\Controllers\Auth;
 
-use DateTime;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
+use Rivet\Data\Models\Auth\User;
 use Rivet\Data\Models\Token;
 use Rivet\Http\Controllers\BaseController;
 use Rivet\Mail\BaseMail;
@@ -42,24 +42,16 @@ class PasswordController extends BaseController
         $user_model = config('crud.user_model');
 
         if (config('auth.login_case_sensitive')) {
-            $user = $user_model::firstWhere('login', $request->login);
+            $user = $user_model::firstWhere('login', $request->get('login'));
         } else {
             $user = $user_model::firstWhere(DB::raw('LOWER(login)'), Str::lower($request->get('login')));
         }
 
-        $this->setResponse(trans('rivet::pwd.error'), 500);
-
-        if (!is_null($user) && !is_null($user->email)) {
-            $token_string = Token::generateTokenString();
-            $duration_min = config('auth.pwd_token_validity');
-            $creation_date = new DateTime();
-
-            $user->pwdTokens()->create([
-                'purpose'    => 'pwd_forgot',
-                'name'       => "pwd_forgot-{$creation_date->getTimestamp()}",
-                'token'      => $token_string,
-                'expires_at' => $creation_date->modify("+{$duration_min} minutes")
-            ]);
+        if (!is_null($user) && !is_null($user->email) && $user->is_active) {
+            // Revokes any previous reset link: only the last one works.
+            [ $token_string, $expires_at ] = $user->issuePasswordToken(
+                Token::PURPOSE_PWD_FORGOT
+            );
 
             // Même route front que la création de mot de passe (même
             // process, voir docs internes) — même helper, résolu ici
@@ -67,13 +59,14 @@ class PasswordController extends BaseController
             Mail::send(new BaseMail('rivet::emails.auth.forgot', [
                 'user'             => $user,
                 'token'            => $token_string,
-                'token_expires_at' => $creation_date,
+                'token_expires_at' => $expires_at,
                 'url'              => FrontendUrl::build('password', $token_string),
                 'subject'          => trans('rivet::mail.subject_auth_forgot')
             ]));
-
-            $this->setResponse(trans('rivet::pwd.email'));
         }
+
+        // Same answer whether the login exists or not (no enumeration).
+        $this->setResponse(trans('rivet::pwd.email'));
 
         return $this->response->format();
     }
@@ -81,42 +74,31 @@ class PasswordController extends BaseController
     /**
      * Method called by the /api/auth/pwd/{token} URL in POST.
      *
-     * @param string  $token   The valid token
+     * @param string  $token   The plain token
      * @param Request $request The request
      *
      * @return JsonResponse
      */
     public function mailRenew(string $token, Request $request): JsonResponse
     {
-        $token = Token::firstWhere('token', hash('sha256', $token));
+        // Unknown, expired, or not a password token: same clean error.
+        $record = Token::findValid($token, Token::PASSWORD_PURPOSES);
+        $user = $record?->tokenable;
 
         $this->setResponse(trans('rivet::pwd.token'), 500);
 
-        // The is_null($token) check MUST happen before anything reads
-        // $token->expires_at: an unknown or malformed token used to
-        // reach that read first and crash with an uncaught error
-        // (null->expires_at) instead of the intended 500 response
-        // below - handing an attacker fuzzing this endpoint a stack
-        // trace instead of a clean error.
-        if (!is_null($token)) {
-            $duration = (new \DateTime())->diff($token->expires_at);
+        if ($user instanceof User && is_null($user->deleted_at)) {
+            $user->password = $request->get('password');
 
-            if (
-                intval($duration->format('%R%i')) >= 0 &&
-                $token->tokenable::class === config('crud.user_model')
-            ) {
-                $token->tokenable->password = $request->get('password');
+            if ($user->save()) {
+                // Single use: this link and any other pending one die here.
+                $user->revokePasswordTokens();
 
-                if ($token->tokenable->save()) {
-                    // The token used to be left untouched here: as long
-                    // as 'expires_at' hadn't passed, the very same reset
-                    // link could be replayed any number of times. It is
-                    // now deleted on first successful use, same as any
-                    // one-time token should be.
-                    $token->delete();
-
-                    $this->setResponse(trans('rivet::pwd.renew'), 200);
+                if (config('auth.pwd_reset_revokes_sessions')) {
+                    $user->tokens()->delete();
                 }
+
+                $this->setResponse(trans('rivet::pwd.renew'), 200);
             }
         }
 
@@ -137,6 +119,8 @@ class PasswordController extends BaseController
         $request->user()->password = $request->get('new_password');
 
         if ($request->user()->save()) {
+            $request->user()->revokePasswordTokens();
+
             $this->setResponse(trans('rivet::pwd.renew'), 200);
         }
 

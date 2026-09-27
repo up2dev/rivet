@@ -68,6 +68,20 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Bypass roles
+    |--------------------------------------------------------------------------
+    |
+    | Comma-separated role uids exempted from two-factor authentication
+    | (e.g. technical accounts), in addition to the bypass permission.
+    | Empty by default.
+    |
+    */
+    'bypass_roles' => array_filter(explode(
+        ',', (string) env('TWO_FACTOR_BYPASS_ROLES', '')
+    )),
+
+    /*
+    |--------------------------------------------------------------------------
     | Pending token TTL
     |--------------------------------------------------------------------------
     |
@@ -77,6 +91,17 @@ return [
     |
     */
     'pending_token_ttl' => env('TWO_FACTOR_PENDING_TOKEN_TTL', 10),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Max attempts
+    |--------------------------------------------------------------------------
+    |
+    | Wrong codes allowed on a pending token before it is destroyed (the
+    | user then has to log in again). Protects against brute force.
+    |
+    */
+    'max_attempts' => env('TWO_FACTOR_MAX_ATTEMPTS', 5),
 
     /*
     |--------------------------------------------------------------------------

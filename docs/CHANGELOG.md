@@ -1,5 +1,89 @@
 # Changelog
 
+## v1.3.0
+
+Password tokens and two-factor hardening, keeping the best of
+LumePack Foundation 2.3 (whose `tokens` table Rivet already ships).
+No new table: two upgrade migrations only.
+
+### Upgrade notes
+
+- Run `php artisan migrate`. Two migrations are added:
+  `drop_legacy_pwd_token_columns_from_users` (drops `users.pwd_token*`
+  when still present, e.g. a database coming from LumePack <= 2.2) and
+  `encrypt_two_factor_secrets` (widens `user_two_factor_methods.secret`
+  to `text` and encrypts existing TOTP secrets with `APP_KEY`).
+  On Laravel 10, the column change requires `doctrine/dbal`.
+- Keep `APP_KEY` stable: TOTP secrets are now unreadable without it.
+- Schedule `php artisan model:prune --model="Rivet\Data\Models\Token"`
+  to purge expired password tokens.
+- `POST /auth/pwd/forgot` now always answers `200`, and
+  `POST /auth/user/login` no longer returns a validation error for an
+  unknown email (no account enumeration). Adjust any frontend relying
+  on those errors.
+
+### Added
+
+- `auth.pwd_reset_revokes_sessions` (`PWD_RESET_REVOKES_SESSIONS`,
+  default `true`): setting a password through an emailed link deletes
+  the user's Sanctum tokens.
+- `two_factor.max_attempts` (`TWO_FACTOR_MAX_ATTEMPTS`, default `5`):
+  wrong codes allowed on a pending token before it is destroyed.
+- `two_factor.bypass_roles` (`TWO_FACTOR_BYPASS_ROLES`): role uids
+  exempted from 2FA, alongside `bypass_permission`.
+- `Token` model: `PURPOSE_*` constants, `purpose()`/`valid()` scopes,
+  `findValid()`, `isExpired()`, `MassPrunable`.
+- `User::issuePasswordToken()` / `User::revokePasswordTokens()`.
+- `Rivet\Services\AccessTokenService`: single place issuing Sanctum
+  tokens (login, 2FA verify, refresh).
+
+### Fixed
+
+- **Expired password links were still accepted**: the expiry check only
+  read the minutes component of the interval, so a token expired for
+  N whole hours (+ < 1 min) passed. Replaced by a real date comparison.
+- Any token of the `tokens` table (whatever its purpose) could set a
+  password; only `pwd_create`/`pwd_forgot` are accepted now.
+- A successful reset only deleted the token used: other pending links
+  stayed valid. All of them are revoked now.
+- The password creation email was re-sent (with a new token) on every
+  save of a user without password; sent once while a link is valid.
+- The tokens migration used `removeColumn()`, which never touches the
+  database: `users.pwd_token*` were never dropped.
+- `POST /auth/user/login` (login reminder) mailed the logins to
+  `MAIL_FROM_ADDRESS` instead of the user, then crashed (no response set).
+- `refresh` ignored `sanctum.expiration_override`, and the 2FA login
+  path never pruned expired access tokens.
+- `DELETE /auth/2fa/{method}` could remove the last method while
+  enrollment is forced (now `422`).
+- Force-deleting a user left its password tokens behind.
+
+### Security
+
+- TOTP secrets encrypted at rest (`encrypted` cast).
+- Email OTP codes stored hashed in cache.
+- TOTP anti-replay: a code already accepted for a user is refused.
+- `POST /auth/pwd/forgot` no longer reveals whether a login exists, and
+  a new request revokes the previous link.
+
+### Deprecated
+
+- `AuthController::setTokenBody()`: use `AccessTokenService::issue()`.
+
+## v1.2.1
+
+### Fixed
+
+- Register `config/frontend.php` in the service provider.
+
+## v1.2.0
+
+### Added
+
+- Localized frontend links in auth emails (`config/frontend.php`,
+  `Rivet\Support\FrontendUrl`): the locale is resolved from
+  `Accept-Language` before the mail is queued.
+
 ## v1.1.2
 
 ### Fixed

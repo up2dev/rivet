@@ -21,8 +21,6 @@ return new class extends Migration
             $table->boolean('is_active')->default(true);
             $table->rememberToken();
             $table->string('email_token')->nullable();
-            $table->string('pwd_token')->nullable();
-            $table->timestamp('pwd_token_created_at')->nullable();
             $table->timestamp('email_verified_at')->nullable();
             $table->timestamps();
             $table->softDeletes();

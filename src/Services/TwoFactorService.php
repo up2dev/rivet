@@ -68,13 +68,32 @@ class TwoFactorService
      * Verify a TOTP code against a secret.
      *
      * @param string $secret The TOTP secret
-     * @param string $code   The code submitted by the user
+     * @param string    $code   The code submitted by the user
+     * @param User|null $user   The user (enables the anti-replay check)
      *
      * @return bool
      */
-    public function verifyTotp(string $secret, string $code): bool
+    public function verifyTotp(string $secret, string $code, ?User $user = null): bool
     {
-        return (new Google2FA())->verifyKey($secret, $code) !== false;
+        $google2fa = new Google2FA();
+
+        if (is_null($user)) {
+            return $google2fa->verifyKey($secret, $code) !== false;
+        }
+
+        // Anti-replay: a code (time slice) already used by this user is refused.
+        $key = "two_factor_totp_last:{$user->id}";
+        $timestamp = $google2fa->verifyKeyNewer(
+            $secret, $code, (int) Cache::get($key, 0)
+        );
+
+        if (!is_int($timestamp)) {
+            return false;
+        }
+
+        Cache::put($key, $timestamp, now()->addMinutes(5));
+
+        return true;
     }
 
     /**
@@ -98,8 +117,9 @@ class TwoFactorService
      */
     public function storeEmailCode(User $user, string $code): void
     {
+        // Only a hash is kept in cache, never the code itself.
         Cache::put(
-            "two_factor_email_code:{$user->id}", $code,
+            "two_factor_email_code:{$user->id}", Hash::make($code),
             now()->addMinutes(config('two_factor.email_code_ttl'))
         );
     }
@@ -119,7 +139,7 @@ class TwoFactorService
         $stored = Cache::get($key);
         Cache::forget($key);
 
-        return !is_null($stored) && hash_equals($stored, $code);
+        return is_string($stored) && $code !== '' && Hash::check($code, $stored);
     }
 
     /**
@@ -134,6 +154,14 @@ class TwoFactorService
     public function isExempt(User $user): bool
     {
         $permission = config('two_factor.bypass_permission');
+        $roles = array_filter((array) config('two_factor.bypass_roles', []));
+
+        if (
+            !empty($roles) &&
+            $user->roles()->whereIn('uid', $roles)->exists()
+        ) {
+            return true;
+        }
 
         if (empty($permission)) {
             return false;
@@ -142,6 +170,29 @@ class TwoFactorService
         return $user->roles()->whereHas(
             'permissions', fn ($q) => $q->where('uid', $permission)
         )->exists();
+    }
+
+    /**
+     * Whether a user may remove this confirmed method (never the last one
+     * when enrollment is forced).
+     *
+     * @param User   $user   The user
+     * @param string $method The method to remove
+     *
+     * @return bool
+     */
+    public function canDisable(User $user, string $method): bool
+    {
+        if (
+            !config('two_factor.enabled') ||
+            !config('two_factor.force_enrollment') ||
+            $this->isExempt($user)
+        ) {
+            return true;
+        }
+
+        return $user->twoFactorMethods()->whereNotNull('confirmed_at')
+            ->where('method', '!=', $method)->exists();
     }
 
     /**
@@ -191,6 +242,34 @@ class TwoFactorService
     public function invalidatePendingToken(string $token): void
     {
         Cache::forget(self::CACHE_PREFIX.$token);
+        Cache::forget(self::CACHE_PREFIX.'attempts:'.$token);
+    }
+
+    /**
+     * Count a wrong code on a pending token; the token is destroyed once
+     * 'two_factor.max_attempts' is reached.
+     *
+     * @param string $token The pending token
+     *
+     * @return bool Whether the pending token is still usable
+     */
+    public function failPendingToken(string $token): bool
+    {
+        $key = self::CACHE_PREFIX.'attempts:'.$token;
+        $attempts = (int) Cache::get($key, 0) + 1;
+
+        if ($attempts >= (int) config('two_factor.max_attempts', 5)) {
+            $this->invalidatePendingToken($token);
+
+            return false;
+        }
+
+        Cache::put(
+            $key, $attempts,
+            now()->addMinutes(config('two_factor.pending_token_ttl'))
+        );
+
+        return true;
     }
 
     /**
@@ -206,37 +285,6 @@ class TwoFactorService
      */
     public function issueToken(User $user, Request $request): array
     {
-        // AuthController::login() applies ?with= relations to the user it
-        // fetches; every path that reaches here does so via a bare find()
-        // with no such eager-loading, so it's done once, centrally, here -
-        // otherwise this token shape quietly diverges from a direct login's
-        // despite the promise below.
-        foreach (config('query.relations', []) as $relation) {
-            $user->load($relation);
-        }
-
-        $token = $user->createToken(
-            Hash::make($request->server('HTTP_USER_AGENT')), [ '*' ],
-            (
-                is_null(config('sanctum.expiration_override'))?
-                    (
-                        is_null(config('sanctum.expiration'))?
-                            null:
-                            now()->addMinutes(config('sanctum.expiration'))
-                    ):
-                    now()->addMinutes(config('sanctum.expiration_override'))
-            )
-        );
-
-        return [
-            'token'      => $token->plainTextToken,
-            'token_type' => 'bearer',
-            'expires_at' => (
-                is_null($token->accessToken->expires_at)? null: (
-                    new \DateTime($token->accessToken->expires_at)
-                )->format('Y-m-d\TH:i:s.u\Z')
-            ),
-            'user'       => $user
-        ];
+        return app(AccessTokenService::class)->issue($user, $request);
     }
 }

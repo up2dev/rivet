@@ -37,12 +37,22 @@ class LoginController extends BaseController
     public function forgot(Request $request): JsonResponse
     {
         $user_model = config('crud.user_model');
-        Mail::send(new BaseMail('rivet::emails.user.logins', [
-            'logins' => $user_model::where(
-                DB::raw('LOWER(email)'), Str::lower($request->email)
-            )->get()->pluck('login')->toArray(),
-            'subject' => trans('rivet::mail.subject_user_logins')
-        ]));
+        $email = Str::lower((string) $request->get('email'));
+        $logins = $user_model::where(DB::raw('LOWER(email)'), $email)
+            ->pluck('login')->toArray();
+
+        // Sent to the requested address (it used to go to MAIL_FROM), and
+        // only if it matches an account. Same response either way.
+        if (!empty($logins)) {
+            Mail::send(new BaseMail('rivet::emails.user.logins', [
+                'logins'       => $logins,
+                'to_addresses' => [ [ 'email' => $email, 'name' => $email ] ],
+                'subject'      => trans('rivet::mail.subject_user_logins')
+            ]));
+        }
+
+        // No response used to be set here: the endpoint always crashed.
+        $this->setResponse(trans('rivet::user.logins_sent'));
 
         return $this->response->format();
     }

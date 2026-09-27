@@ -60,7 +60,9 @@ class TwoFactorMethod extends BaseModel
      *
      * @var array
      */
-    protected $casts = [ 'confirmed_at' => 'datetime' ];
+    protected $casts = [
+        'secret' => 'encrypted', 'confirmed_at' => 'datetime'
+    ];
 
     /**
      * -------------------------------------------------------------------------

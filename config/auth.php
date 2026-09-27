@@ -184,4 +184,17 @@ return [
 
     'pwd_token_validity' => env('PWD_TOKEN_VALIDITY', 60),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Revoke sessions on password reset
+    |--------------------------------------------------------------------------
+    |
+    | When true, setting a password through an emailed link
+    | (/api/auth/pwd/{token}) deletes every Sanctum access token of the
+    | user: any session opened with the old password is closed.
+    |
+    */
+
+    'pwd_reset_revokes_sessions' => env('PWD_RESET_REVOKES_SESSIONS', true),
+
 ];

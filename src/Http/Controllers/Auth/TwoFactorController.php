@@ -117,11 +117,9 @@ class TwoFactorController extends BaseController
             ->where('method', 'totp')->whereNull('confirmed_at')->first();
 
         if (is_null($method) || !$this->service->verifyTotp(
-            $method->secret, (string) $request->input('code')
+            $method->secret, (string) $request->input('code'), $user
         )) {
-            $this->setResponse(trans('rivet::two_factor.invalid_code'), 400);
-
-            return $this->response->format();
+            return $this->_invalidCode($request);
         }
 
         $method->confirmed_at = now();
@@ -194,9 +192,7 @@ class TwoFactorController extends BaseController
             is_null($method) ||
             !$this->service->verifyEmailCode($user, (string) $request->input('code'))
         ) {
-            $this->setResponse(trans('rivet::two_factor.invalid_code'), 400);
-
-            return $this->response->format();
+            return $this->_invalidCode($request);
         }
 
         $method->confirmed_at = now();
@@ -255,24 +251,20 @@ class TwoFactorController extends BaseController
         $code = (string) $request->input('code');
 
         if (is_null($user) || !$this->_hasConfirmed($user, $method)) {
-            $this->setResponse(trans('rivet::two_factor.invalid_code'), 400);
-
-            return $this->response->format();
+            return $this->_invalidCode($request);
         }
 
         $valid = match ($method) {
             'totp'  => $this->service->verifyTotp(
                 $user->twoFactorMethods()->where('method', 'totp')->first()->secret,
-                $code
+                $code, $user
             ),
             'email' => $this->service->verifyEmailCode($user, $code),
             default => false
         };
 
         if (!$valid) {
-            $this->setResponse(trans('rivet::two_factor.invalid_code'), 400);
-
-            return $this->response->format();
+            return $this->_invalidCode($request);
         }
 
         $this->service->invalidatePendingToken($request->input('pending_token'));
@@ -316,6 +308,12 @@ class TwoFactorController extends BaseController
      */
     public function disable(string $method, Request $request): JsonResponse
     {
+        if (!$this->service->canDisable($request->user(), $method)) {
+            $this->setResponse(trans('rivet::two_factor.last_method'), 422);
+
+            return $this->response->format();
+        }
+
         $request->user()->twoFactorMethods()->where('method', $method)->delete();
 
         $this->setResponse(trans('rivet::two_factor.disabled'));
@@ -429,6 +427,29 @@ class TwoFactorController extends BaseController
     }
 
     /**
+     * 400 "invalid code" response, counting the failure on the pending token.
+     *
+     * @param Request $request The request
+     *
+     * @return JsonResponse
+     */
+    private function _invalidCode(Request $request): JsonResponse
+    {
+        // Wrong codes burn the pending token (brute-force protection).
+        $token = $request->input('pending_token');
+
+        if (is_string($token) && $token !== '') {
+            $this->service->failPendingToken($token);
+        }
+
+        $this->setResponse(trans('rivet::two_factor.invalid_code'), 400);
+
+        return $this->response->format();
+    }
+
+    /**
+     * 401 response.
+     *
      * @return JsonResponse
      */
     private function _unauthorized(): JsonResponse

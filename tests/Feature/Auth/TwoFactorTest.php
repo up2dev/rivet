@@ -35,6 +35,14 @@ class TwoFactorTest extends TestCase
     /**
      * @return User
      */
+    private function _sentEmailCode(): string
+    {
+        return (string) Mail::sent(\Rivet\Mail\BaseMail::class)->last()->code;
+    }
+
+    /**
+     * @return User
+     */
     private function _createUser(): User
     {
         return User::create([
@@ -517,12 +525,8 @@ class TwoFactorTest extends TestCase
 
         Mail::assertSent(\Rivet\Mail\BaseMail::class);
 
-        // The code was generated inside the controller and isn't
-        // otherwise observable from the test - read it back from the
-        // same cache key the service stores it under.
-        $code = \Illuminate\Support\Facades\Cache::get(
-            "two_factor_email_code:{$user->id}"
-        );
+        // Only a hash is cached: read the code from the sent email.
+        $code = $this->_sentEmailCode();
 
         $response = $this->actingAs($user, 'sanctum')
             ->postJson('/api/auth/2fa/email/confirm', [ 'code' => $code ]);

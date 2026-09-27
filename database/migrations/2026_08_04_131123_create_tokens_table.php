@@ -21,11 +21,6 @@ return new class extends Migration
             $table->timestamp('expires_at')->nullable();
             $table->timestamps();
         });
-
-        Schema::table('users', function (Blueprint $table) {
-            $table->removeColumn('pwd_token');
-            $table->removeColumn('pwd_token_created_at');
-        });
     }
 
     /**

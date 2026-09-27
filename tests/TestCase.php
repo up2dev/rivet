@@ -115,6 +115,9 @@ abstract class TestCase extends BaseTestCase
             mkdir($target, 0777, true);
         }
 
+        // Drop stale copies (renamed/removed migrations).
+        array_map('unlink', glob("{$target}/*.php"));
+
         foreach (glob("{$source}/*.php") as $file) {
             if (str_contains($file, 'create_logs_table')) {
                 continue;

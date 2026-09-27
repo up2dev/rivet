@@ -436,7 +436,9 @@ de connexion entièrement différent.
 | `available_methods` | Méthodes proposées par le projet (`totp`, `email`), séparées par une virgule (défaut : `totp,email`) — restreint à la fois ce que `setup()`/`enableEmail()` acceptent (une méthode absente de cette liste est rejetée avec un 404, même appelée directement) et ce que `TwoFactorLoginChallenger` annonce dans `methods` sur un `intent: "enroll"` |
 | `force_enrollment` | Si `true`, un utilisateur sans méthode confirmée est bloqué à la connexion derrière un enrôlement obligatoire plutôt que laissé passer sans protection |
 | `bypass_permission` | Uid de la permission d'exemption (défaut : `RIVET_BYPASS_2FA`) — contourne le 2FA entièrement, y compris l'enrôlement forcé |
+| `bypass_roles` | Uids de rôles exemptés, séparés par une virgule (`TWO_FACTOR_BYPASS_ROLES`, vide par défaut) — alternative directe à la permission, pratique pour un compte technique |
 | `pending_token_ttl` | Durée de vie (minutes) du jeton intermédiaire |
+| `max_attempts` | Codes faux tolérés sur un jeton intermédiaire avant sa destruction (`TWO_FACTOR_MAX_ATTEMPTS`, défaut : `5`) — l'utilisateur doit alors se reconnecter |
 | `email_code_ttl` | Durée de vie (minutes) d'un code envoyé par email |
 
 #### Exempter un rôle précis du 2FA
@@ -474,7 +476,7 @@ Eloquent (ci-dessus) ou une migration/seeder.
 Après validation des identifiants (login/mot de passe corrects, compte
 actif) :
 
-1. **Utilisateur exempté** (`bypass_permission`) → connexion normale,
+1. **Utilisateur exempté** (`bypass_permission` ou `bypass_roles`) → connexion normale,
    token Sanctum émis directement, aucune vérification.
 2. **Méthode déjà confirmée** (TOTP ou email) → un **jeton intermédiaire**
    `intent: "verify"` est renvoyé à la place du token, avec la liste des
@@ -529,12 +531,56 @@ séparée — confirmer la méthode EST la preuve attendue.
 Un jeton intermédiaire est à usage unique : consommé après une
 vérification réussie, il ne peut pas être rejoué.
 
+#### Sécurité
+
+- Le secret TOTP est **chiffré en base** (cast `encrypted`, clé
+  `APP_KEY`) et jamais sérialisé dans une réponse. Changer `APP_KEY`
+  rend les secrets existants illisibles : les utilisateurs devront
+  réenrôler leur appli.
+- Le code email n'est stocké qu'**haché** dans le cache, et n'est
+  valable qu'une fois.
+- Un code TOTP déjà accepté pour un utilisateur est refusé s'il est
+  resoumis (**anti-rejeu**), même sur une nouvelle connexion.
+- Chaque code faux compte sur le jeton intermédiaire ; au-delà de
+  `max_attempts`, le jeton est détruit (**anti force brute**).
+- Avec `force_enrollment` actif (et un utilisateur non exempté),
+  `DELETE /auth/2fa/{method}` refuse en `422` de retirer la **dernière**
+  méthode confirmée : il faut d'abord en activer une autre.
+
 ### Mot de passe oublié / réinitialisation
 
 `PasswordController` fournit le flux complet : `forgot` (envoie un email
 avec un token), `mailRenew` (lien cliqué dans l'email, vérifie le token),
-`renew` (soumet le nouveau mot de passe). Un token de réinitialisation est
-supprimé après un renouvellement réussi — il ne peut pas être rejoué.
+`renew` (soumet le nouveau mot de passe).
+
+Les tokens vivent dans la table `tokens` (modèle `Rivet\Data\Models\Token`,
+relation `User::pwdTokens()`), jamais dans `users`. Seul leur hash SHA-256
+est stocké. Chaque token a un `purpose` : `pwd_create` (compte créé sans
+mot de passe) ou `pwd_forgot` (mot de passe oublié).
+
+- `forgot` répond **toujours** `200`, que le login existe ou non (pas
+  d'énumération de comptes), et révoque le lien précédent : seul le
+  dernier envoyé fonctionne.
+- `mailRenew` n'accepte qu'un token **non expiré** et de purpose
+  `pwd_create`/`pwd_forgot`. Après succès, **tous** les liens en attente
+  de l'utilisateur sont supprimés, ainsi que ses tokens Sanctum si
+  `auth.pwd_reset_revokes_sessions` est actif (défaut) — les sessions
+  ouvertes avec l'ancien mot de passe sont fermées.
+- Le lien de création de mot de passe (`mail.is_forcing_password_creation`)
+  n'est envoyé qu'une fois : pas de nouvel email tant que le précédent
+  lien est valide.
+
+Les tokens expirés se purgent avec la commande native de Laravel, à
+planifier dans l'application :
+
+```php
+// routes/console.php (Laravel 11+)
+use Illuminate\Support\Facades\Schedule;
+
+Schedule::command('model:prune', [
+    '--model' => [ \Rivet\Data\Models\Token::class ]
+])->daily();
+```
 
 ### Permissions par route
 
@@ -715,6 +761,7 @@ Laravel. Voir [`docs/INTEGRATION.md`](INTEGRATION.md) pour l'exemple complet.
 | `AUTH_MAIL_RELOCK` | `false` | `auth.is_mail_relocked` — revérification obligatoire après changement d'email |
 | `TOKENS_PREFIX` | *(vide)* | `auth.token_prefix` — préfixe des tokens générés (reset mot de passe, etc.) |
 | `PWD_TOKEN_VALIDITY` | `60` | `auth.pwd_token_validity` — durée de vie (minutes) d'un token de réinitialisation |
+| `PWD_RESET_REVOKES_SESSIONS` | `true` | `auth.pwd_reset_revokes_sessions` — ferme toutes les sessions (tokens Sanctum) après un mot de passe défini via lien email |
 | `USER_MODEL` | `Rivet\Data\Models\Auth\User` | `crud.user_model` |
 | `USER_RELATION` | `user` | `crud.user_relation` — nom de la relation vers l'utilisateur propriétaire |
 | `USER_FK` | `user_id` | `crud.user_fk` — colonne de clé étrangère pour la portée par utilisateur |
@@ -732,7 +779,8 @@ Laravel. Voir [`docs/INTEGRATION.md`](INTEGRATION.md) pour l'exemple complet.
 Voir la table dédiée dans la section "Authentification à deux facteurs"
 plus haut (`TWO_FACTOR_ENABLED`, `TWO_FACTOR_ISSUER`,
 `TWO_FACTOR_AVAILABLE_METHODS`, `TWO_FACTOR_FORCE_ENROLLMENT`,
-`TWO_FACTOR_BYPASS_PERMISSION`, `TWO_FACTOR_PENDING_TOKEN_TTL`,
+`TWO_FACTOR_BYPASS_PERMISSION`, `TWO_FACTOR_BYPASS_ROLES`,
+`TWO_FACTOR_PENDING_TOKEN_TTL`, `TWO_FACTOR_MAX_ATTEMPTS`,
 `TWO_FACTOR_EMAIL_CODE_TTL`).
 
 ### Mailing

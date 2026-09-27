@@ -6,5 +6,6 @@ return [
     'invalid_code' => 'Invalid or expired code.',
     'code_sent' => 'A verification code has been sent.',
     'confirmed' => 'Two-factor method confirmed.',
-    'disabled' => 'Two-factor method disabled.'
+    'disabled' => 'Two-factor method disabled.',
+    'last_method' => 'Two-factor authentication is mandatory: enable another method before disabling this one.'
 ];
