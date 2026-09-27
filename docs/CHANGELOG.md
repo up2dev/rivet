@@ -1,5 +1,14 @@
 # Changelog
 
+## v1.3.1
+
+### Documentation
+
+- Expired password tokens purge: added the Laravel 10 variant
+  (`app/Console/Kernel.php`), the `schedule:run` crontab requirement and
+  `schedule:list` check, and made explicit that it belongs in the host
+  application. Also added as step 3 of `docs/INTEGRATION.md`.
+
 ## v1.3.0
 
 Password tokens and two-factor hardening, keeping the best of

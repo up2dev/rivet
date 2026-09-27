@@ -571,16 +571,43 @@ mot de passe) ou `pwd_forgot` (mot de passe oublié).
   lien est valide.
 
 Les tokens expirés se purgent avec la commande native de Laravel, à
-planifier dans l'application :
+planifier dans l'application (voir aussi
+[`docs/INTEGRATION.md`](INTEGRATION.md#la-purge-des-tokens-expirés)).
+Ce code va dans **l'application** qui installe Rivet, pas dans Rivet.
+
+Laravel 11+, dans `routes/console.php` :
 
 ```php
-// routes/console.php (Laravel 11+)
 use Illuminate\Support\Facades\Schedule;
 
+// Purge quotidienne des tokens de mot de passe expirés
 Schedule::command('model:prune', [
     '--model' => [ \Rivet\Data\Models\Token::class ]
 ])->daily();
 ```
+
+Laravel 10, dans la méthode `schedule()` de `app/Console/Kernel.php` :
+
+```php
+protected function schedule(Schedule $schedule): void
+{
+    // Purge quotidienne des tokens de mot de passe expirés
+    $schedule->command('model:prune', [
+        '--model' => [ \Rivet\Data\Models\Token::class ]
+    ])->daily();
+}
+```
+
+La tâche ne tourne que si le planificateur Laravel est lancé chaque
+minute sur le serveur (crontab) :
+
+```
+* * * * * cd /chemin/vers/app && php artisan schedule:run >> /dev/null 2>&1
+```
+
+Vérifier que la tâche est bien enregistrée : `php artisan schedule:list`.
+Sans cette purge, rien ne casse : les tokens expirés sont déjà refusés,
+ils restent simplement en base.
 
 ### Permissions par route
 

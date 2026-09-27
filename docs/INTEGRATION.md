@@ -28,7 +28,7 @@ les valeurs par défaut de Rivet, sans écraser ce qui existe déjà — pour
 personnaliser une clé, il suffit de créer le fichier `config/xxx.php`
 correspondant dans l'application et d'y mettre la clé voulue.
 
-## 3. Deux réglages que Rivet ne peut pas faire à ta place
+## 3. Trois réglages que Rivet ne peut pas faire à ta place
 
 ### Le guard Sanctum
 
@@ -67,6 +67,49 @@ pouvoir appeler l'API :
 'paths' => [ 'api/*', 'sanctum/csrf-cookie' ],
 'allowed_origins' => [ 'https://mon-frontend.exemple.com' ],
 ```
+
+### La purge des tokens expirés
+
+Les liens de création/réinitialisation de mot de passe (table `tokens`)
+expirent mais ne sont pas supprimés automatiquement : le modèle
+`Rivet\Data\Models\Token` est « prunable », c'est à l'application de
+planifier sa purge.
+
+Ce code va dans **l'application** qui installe Rivet, pas dans Rivet.
+
+Laravel 11+, dans `routes/console.php` :
+
+```php
+use Illuminate\Support\Facades\Schedule;
+
+// Purge quotidienne des tokens de mot de passe expirés
+Schedule::command('model:prune', [
+    '--model' => [ \Rivet\Data\Models\Token::class ]
+])->daily();
+```
+
+Laravel 10, dans la méthode `schedule()` de `app/Console/Kernel.php` :
+
+```php
+protected function schedule(Schedule $schedule): void
+{
+    // Purge quotidienne des tokens de mot de passe expirés
+    $schedule->command('model:prune', [
+        '--model' => [ \Rivet\Data\Models\Token::class ]
+    ])->daily();
+}
+```
+
+La tâche ne tourne que si le planificateur Laravel est lancé chaque
+minute sur le serveur (crontab) :
+
+```
+* * * * * cd /chemin/vers/app && php artisan schedule:run >> /dev/null 2>&1
+```
+
+Vérifier que la tâche est bien enregistrée : `php artisan schedule:list`.
+Sans cette purge, rien ne casse : les tokens expirés sont déjà refusés,
+ils restent simplement en base.
 
 ## 4. Générer un CRUD complet
 
