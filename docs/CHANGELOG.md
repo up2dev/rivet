@@ -1,5 +1,19 @@
 # Changelog
 
+## v2.0.1
+
+### Documentation
+
+- `docs/INTEGRATION.md`: new "Mettre à jour depuis Rivet 1.x" section
+  (version constraint, alias rename command explained step by step,
+  macOS variant, check + `optimize:clear`, migrations).
+- The rename command now also covers `bootstrap/`, `config/` and
+  `tests/`, matches whole words only and does nothing when no file
+  matches.
+- `docs/USAGE.md`: `--withdefaultpermissions` documents
+  `Role::DEFAULT_PERMISSIONS` and its current limit (role/permission
+  routes disabled, so nothing is attached yet).
+
 ## v2.0.0
 
 ### Breaking
@@ -10,8 +24,11 @@
   calls):
 
   ```bash
-  grep -rl "lpfauth" routes app | xargs sed -i "s/lpfauth/rivet.auth/g"
+  grep -rlw "lpfauth" routes app bootstrap config tests 2>/dev/null \
+      | xargs -r sed -i 's/\blpfauth\b/rivet.auth/g'
   ```
+
+  Full procedure: `docs/INTEGRATION.md`, "Mettre à jour depuis Rivet 1.x".
 
   Permission uids are unchanged: no data migration.
 

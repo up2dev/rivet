@@ -67,7 +67,7 @@ la déclaration des relations NN/ON/NO utilisées lors de l'enregistrement.
 Route (routes/api.php)
    │
    ▼
-Middleware 'rivet.auth:sanctum'      →  authentifie via Sanctum
+Middleware 'rivet.auth:sanctum'   →  authentifie via Sanctum
    │
    ▼
 Middleware 'dataValidation:X'     →  valide le corps de la requête
@@ -621,7 +621,7 @@ qui la porte.
 ### Gestion en ligne de commande
 
 ```bash
-# Créer un rôle, avec les permissions par défaut pour gérer les rôles
+# Créer un rôle, avec les permissions par défaut (voir ci-dessous)
 php artisan rightsmanagement --action=create-role --roleuid=ADMIN --rolename=Administrateur --withdefaultpermissions=true
 
 # Créer un utilisateur et le rattacher à un rôle
@@ -633,6 +633,20 @@ php artisan rightsmanagement --action=create-users --file=/chemin/vers/users.csv
 # Enregistrer une permission par route (scanne les routes existantes)
 php artisan rightsmanagement --action=create-permissions
 ```
+
+`--withdefaultpermissions=true` (également utilisé par
+`defaultrole:create`) attache au rôle les permissions listées dans
+`Role::DEFAULT_PERMISSIONS` : celles des endpoints de gestion des rôles
+et des permissions (`RAAR_AUTHROLE`, `RAAR_AUTHROLE_ADD`,
+`RAAR_AUTHROLE_EDIT`, `RAAR_AUTHROLE_DELETE`, `RAAP_AUTHPERMISSION`).
+Seules les permissions **déjà enregistrées** en base sont attachées
+(`--action=create-permissions`, qui scanne les routes existantes).
+
+> **Limite actuelle** : les routes `auth/role` et `auth/permission` sont
+> désactivées dans `routes/api.php` de Rivet. Ces permissions n'existent
+> donc pas en base et l'option n'attache rien pour l'instant — le rôle
+> est créé sans permission. Sans permission enregistrée pour une route,
+> celle-ci reste accessible à tout utilisateur authentifié.
 
 ---
 

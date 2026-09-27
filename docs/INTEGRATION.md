@@ -174,6 +174,62 @@ curl http://localhost:8000/api/articles \
     -H "Authorization: Bearer 1|abc..." \
     -H "Accept: application/json"
 
+## 7. Mettre à jour depuis Rivet 1.x
+
+La v2 renomme l'alias du middleware d'authentification : `lpfauth`
+devient `rivet.auth`. C'est le seul changement cassant ; les uids de
+permissions et la base de données ne changent pas.
+
+**1. Changer la contrainte de version** dans le `composer.json` de
+l'application, puis mettre à jour :
+
+```bash
+composer require up2dev/rivet:^2.0
+```
+
+**2. Renommer l'alias dans le code de l'application :**
+
+```bash
+grep -rlw "lpfauth" routes app bootstrap config tests 2>/dev/null \
+    | xargs -r sed -i 's/\blpfauth\b/rivet.auth/g'
+```
+
+Ce que fait cette commande :
+
+- `grep -rlw "lpfauth" …` cherche récursivement (`-r`) le mot exact
+  (`-w`) dans les dossiers où l'alias apparaît d'habitude — routes,
+  code, `bootstrap/app.php` (Laravel 11+), config, tests — et n'affiche
+  que la liste des fichiers concernés (`-l`). `2>/dev/null` masque
+  l'erreur si un de ces dossiers n'existe pas.
+- `xargs -r sed -i …` remplace l'alias directement dans chacun de ces
+  fichiers (`-i`). `\b…\b` limite le remplacement au mot entier ;
+  `-r` évite de lancer `sed` si aucun fichier n'a été trouvé.
+- Ça couvre toutes les formes : `'lpfauth:sanctum'`,
+  `withoutMiddleware('lpfauth:sanctum')`, `[ 'lpfauth:sanctum', … ]`.
+
+Sous macOS (sed BSD), remplacer `sed -i` par `sed -i ''` et `\b` par
+`[[:<:]]`/`[[:>:]]`, ou installer `gnu-sed`.
+
+**3. Vérifier qu'il ne reste rien, puis vider les caches :**
+
+```bash
+grep -rnw "lpfauth" --exclude-dir=vendor --exclude-dir=node_modules .
+php artisan optimize:clear
+```
+
+Le `grep` ne doit rien afficher. `optimize:clear` vide notamment le
+cache des routes (`route:cache`), qui garderait sinon l'ancien alias —
+une route protégée renverrait alors une erreur « Target class
+[lpfauth] does not exist ».
+
+**4. Lancer les migrations** si l'application venait d'une version
+antérieure à 1.3.0 (colonnes `users.pwd_token*`, chiffrement des secrets
+2FA) :
+
+```bash
+php artisan migrate
+```
+
 # Filtrer et trier
 curl "http://localhost:8000/api/articles?filters=is_published:ist(1)&sort=-created_at" \
     -H "Authorization: Bearer 1|abc..." \
